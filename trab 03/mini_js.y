@@ -146,25 +146,24 @@ vector<string> replace_labels() {
   vector<string> out;
   map<string, Label> mlabel;
 
-  for(int i = 0; i < buffer.size(); i++) {
+  for(int i = 0, j = 0; i < buffer.size(); i++) {
+    string ss;
     if( buffer[i][0] == '%' ) {
       mlabel[buffer[i].substr(1)].n = buffer[i].substr(1);
-      mlabel[buffer[i].substr(1)].i = i;
-    }  
-    out.push_back(buffer[i]);
-  }
-  
-  for( int i = 0; i < out.size(); i++ ) {
-    string ss;
-
-    if(out[i][0] != ':') continue;
-
-    ss = out[i].substr(1);
-    if(mlabel.count(ss) > 0 ) {
-      out[i] = to_string(i+1);
-      out[mlabel[ss].i] = to_string(i+1);
+      mlabel[buffer[i].substr(1)].i = j;
+      out.push_back(buffer[i]);
+      j++;
+    } else if( buffer[i][0] == ':' ) {
+      ss = buffer[i].substr(1);
+      if(mlabel.count(ss) > 0 ) {
+        out[mlabel[ss].i] = to_string(j);
+      }
+    } else {
+      out.push_back(buffer[i]);
+      j++;
     }
   }
+  
   return out;
 }
 
