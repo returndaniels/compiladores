@@ -48,10 +48,10 @@ string str_buffer = "";
 %token tk_id tk_int tk_cte_float tk_maig tk_meig tk_ig tk_diff tk_inc tk_inc_one tk_str tk_str2 tk_cmmt 
 %token tk_if tk_else tk_for tk_while tk_id_print tk_let tk_const tk_var
 
-%right tk_inc_one
 %nonassoc '<' '>' tk_maig tk_meig tk_ig tk_diff
 %left '+' '-'
 %left '*' '/'
+%right tk_inc_one
 
 %%
 
@@ -92,16 +92,18 @@ D : tk_let d
 d : l ',' d
   | l
 
-l : tk_id { concat_str( $1.v + "\n&\n" + $1.v + "\n"  ); } '=' E { concat_str( "=\n^\n" ); }
-  | tk_id { concat_str( $1.v + "\n&\n" ); }
+l : LVALUE { concat_str( "&\n" + $1.v + "\n"  ); } '=' E { concat_str( "=\n^\n" ); }
+  | LVALUE { concat_str( "&\n" ); }
   ;
 
-A : tk_id { concat_str( $1.v + "\n" ); } a
-  | tk_id { concat_str( $1.v + "\n" ); } tk_inc { concat_str( $1.v + "\n@\n" ); } E { concat_str( "+\n=\n^\n" ); }
+A : LVALUE a
+  | LVALUEPROP '=' E { concat_str( "[=]\n^\n" ); }
+  | LVALUE tk_inc { concat_str( $1.v + "\n@\n" ); } E { concat_str( "+\n=\n^\n" ); }
+  | LVALUEPROP tk_inc { concat_str( $1.v + "[@]\n" ); } E { concat_str( "+\n[=]\n^\n" ); }
   ;
 
 a : '=' E { concat_str( "=\n^\n" ); }
-  | '=' tk_id { concat_str( $2.v + "\n"); } '=' E { concat_str( "=\n^\n" + $2.v + "\n@\n=\n^\n" ); }
+  | '=' LVALUE '=' E { concat_str( "=\n^\n" + $2.v + "\n@\n=\n^\n" ); }
   ;
   
 E : E '+' E { concat_str( "+\n" ); }
@@ -118,18 +120,26 @@ E : E '+' E { concat_str( "+\n" ); }
   | F
   ;
   
-F : tk_id { concat_str( $1.v + "\n@\n" ); }
+F : LVALUE { concat_str("@\n"); $$.v = $1.v + "@\n"; }
+  | LVALUEPROP { concat_str("[@]\n"); $$.v = $1.v + "[@]\n"; }
   | tk_int { concat_str(  $1.v + "\n" ); }
   | tk_cte_float { concat_str(  $1.v + "\n" ); }
   | tk_str { concat_str(  $1.v + "\n" ); }
   | tk_str2 { concat_str(  $1.v + "\n" ); }
   | tk_cmmt { concat_str(  $1.v + "\n" ); }
   | '(' E ')'
-  | tk_id tk_inc_one  { concat_str( $1.v  + '\n' + $1.v + "\n@\n1\n+\n=\n" ); }
+  | LVALUE { concat_str("@\n"); } tk_inc_one  { concat_str( $1.v  + '\n' + $1.v + "\n@\n1\n+\n=\n^\n" ); }
   | tk_id '(' PARAM ')' { concat_str( $1.v + "\n$\n" ); }
   | '{' '}' { concat_str( "{}\n" ); }
   | '[' ']' { concat_str( "[]\n" ); }
   ;
+
+LVALUE : tk_id { concat_str( $1.v + "\n" ); }
+       ;
+
+LVALUEPROP : E '.' tk_id { concat_str( $3.v + "\n" ); $$.v = $1.v + $3.v + "\n"; }
+           | E '[' E ']'{ $$.v = $1.v + $3.v + "\n"; }
+           ;
 
 PARAM : ARGs
       |
