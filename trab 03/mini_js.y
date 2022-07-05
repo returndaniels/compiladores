@@ -23,12 +23,25 @@ void concat_str( string st );
 
 int yylex();
 void yyerror( const char* );
-void label(string v);
-void end_label(string v);
+void create_if_label(string);
+void end_if_label(string);
+void create_while_label(string);
+void end_while_label(string);
+void concat_str(string);
+vector<string> replace_labels();
+vector<string> split(string, char);
+void print_vector(vector<string>);
 
 int linha = 1;
-int labels = 0;
-int prev_l = 0;
+
+map<string, Label> mlabel;
+int if_labels = 0;
+int prev_if_lalbels = 0;
+int while_labels = 0;
+int prev_while_lalbels = 0;
+string while_start_p = "";
+int while_start_i = 0;
+
 string str_buffer = "";
 %}
 
@@ -42,15 +55,34 @@ string str_buffer = "";
 
 %%
 
-P : C ';' P
-  | C ';'
-  | '{' P '}'
+P : C P
+  | C
   ;
 
 C : tk_if '(' E ')' { 
-          label("then"); concat_str("\n?\n"); label("else"); concat_str("\n#\n"); end_label("then");
-        } C { end_label("else"); }
-  | D
+    create_if_label("then"); 
+    concat_str("?\n"); 
+    create_if_label("end_if"); 
+    concat_str("#\n"); 
+    end_if_label("then");
+  } C { end_if_label("end_if"); }
+  | tk_while { 
+    concat_str(while_start_p = ":while_"+to_string(while_labels));
+    concat_str("\n");
+    while_start_i = while_labels++;
+   } '(' E ')' { 
+    create_while_label("then"); 
+    concat_str("?\n"); 
+    create_while_label("end_while"); 
+    concat_str("#\n"); 
+    end_while_label("then");
+  } C {
+    concat_str("%while_" + to_string(while_start_i) + "\n"); 
+    concat_str("#\n");
+    end_while_label("end_while"); 
+  }
+  | '{' C '}'
+  | D ';'
   ;
 
 D : tk_let d
@@ -82,6 +114,7 @@ E : E '+' E { concat_str( "+\n" ); }
   | E tk_maig E   { concat_str( ">=\n" ); }
   | E tk_meig E   { concat_str( "<=\n" ); }
   | E tk_diff E   { concat_str( "!=\n" ); }
+  | '-' { concat_str("0\n"); } E { concat_str("-\n"); }
   | F
   ;
   
@@ -111,18 +144,27 @@ ARGs : E ',' ARGs
 #include "lex.yy.c"
 
 void yyerror( const char* msg ) {
-  cout << endl << "Erro na linha " << linha << ": " 
-       << msg << endl << "Perto de : '" << yylval.v << "'" << endl; 
+  cout << str_buffer;
+  cout << endl << msg << " linha " << linha << endl 
+       << "Perto de\n '" << yylval.v << "'." << endl; 
 
   exit( 0 );
 }
 
-void label(string v) {
-  str_buffer += '%' + v + '_' + to_string(++labels); 
+void create_if_label(string v) {
+  str_buffer += '%' + v + '_' + to_string(++if_labels) + '\n'; 
 }
 
-void end_label(string v){
-  str_buffer += ':' + v + '_' + to_string(++prev_l) + "\n"; 
+void end_if_label(string v){
+  str_buffer += ':' + v + '_' + to_string(++prev_if_lalbels) + "\n"; 
+}
+
+void create_while_label(string v) {
+  str_buffer += '%' + v + '_' + to_string(while_labels++) + '\n';
+}
+
+void end_while_label(string v){
+  str_buffer += ':' + v + '_' + to_string(++prev_while_lalbels) + "\n"; 
 }
 
 void concat_str( string st ) {
@@ -149,21 +191,29 @@ vector<string> replace_labels() {
   for(int i = 0, j = 0; i < buffer.size(); i++) {
     string ss;
     if( buffer[i][0] == '%' ) {
-      mlabel[buffer[i].substr(1)].n = buffer[i].substr(1);
-      mlabel[buffer[i].substr(1)].i = j;
-      out.push_back(buffer[i]);
+      ss = buffer[i].substr(1);
+      if(mlabel.count(ss) == 0 ) {
+        mlabel[ss].n = ss;
+        mlabel[ss].i = j;
+        out.push_back(buffer[i]);
+      } else {
+        out.push_back(to_string(mlabel[ss].i));
+      }
       j++;
     } else if( buffer[i][0] == ':' ) {
       ss = buffer[i].substr(1);
-      if(mlabel.count(ss) > 0 ) {
+      if(mlabel.count(ss) > 0 )
         out[mlabel[ss].i] = to_string(j);
+      else {
+        mlabel[ss].i = j;
+        //out[mlabel[ss].i] = to_string(j);
       }
     } else {
       out.push_back(buffer[i]);
       j++;
     }
   }
-  
+
   return out;
 }
 
