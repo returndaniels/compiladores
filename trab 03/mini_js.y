@@ -23,6 +23,8 @@ void concat_str( string st );
 
 int yylex();
 void yyerror( const char* );
+void not_declared_error( string var );
+void sign( string var );
 void create_if_label(string);
 void end_if_label(string);
 void create_while_label(string);
@@ -34,6 +36,7 @@ void print_vector(vector<string>);
 
 int linha = 1;
 
+map<string, int> vars;
 map<string, Label> mlabel;
 int if_labels = 0;
 int prev_if_lalbels = 0;
@@ -100,11 +103,11 @@ D : tk_let d
 d : l ',' d
   | l
 
-l : LVALUE { concat_str( "&\n" + $1.v  ); } '=' E { concat_str( "=\n^\n" ); }
-  | LVALUE { concat_str( "&\n" ); }
+l : LVALUE { concat_str( "&\n" + $1.v  ); sign($1.v); } '=' E { concat_str( "=\n^\n" ); }
+  | LVALUE { concat_str( "&\n" ); sign($1.v); }
   ;
 
-A : LVALUE a
+A : LVALUE a { not_declared_error($1.v); }
   | LVALUEPROP '=' E { concat_str( "[=]\n^\n" ); }
   | LVALUE tk_inc { concat_str( $1.v + "@\n" ); } E { concat_str( "+\n=\n^\n" ); }
   | LVALUEPROP tk_inc { concat_str( $1.v + "[@]\n" ); } E { concat_str( "+\n[=]\n^\n" ); }
@@ -162,12 +165,37 @@ ARGs : E ',' ARGs
 
 #include "lex.yy.c"
 
+const string WHITESPACE = " \n\r\t\f\v";
+
+string rtrim(const string &s)
+{
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == string::npos) ? "" : s.substr(0, end + 1);
+}
+
+void not_declared_error(string s) {
+  string var = rtrim(s);
+  if(vars.count(var) < 1) {
+    cout << "Erro: a variável '"+ var +"' não foi declarada.\n";
+    exit(1);
+  }
+}
+
+void sign(string s) {
+  string var = rtrim(s);
+  if(vars.count(var) > 0) {
+    cout << "Erro: a variável '"+ var +"' já foi declarada na linha " << vars[var] << ".\n";
+    exit(1);
+  }
+  vars[var] = linha;
+}
+
 void yyerror( const char* msg ) {
   cout << str_buffer;
   cout << endl << msg << " linha " << linha << endl 
        << "Perto de\n '" << yylval.v << "'." << endl; 
 
-  exit( 0 );
+  exit(1);
 }
 
 void create_if_label(string v) {

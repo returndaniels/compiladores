@@ -2,5 +2,7 @@
 *.txt
 *.yy.c
 
+y.tab.c
+mini_js
 test/
 interpretador
