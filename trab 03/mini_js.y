@@ -33,11 +33,14 @@ void concat_str(string);
 vector<string> replace_labels();
 vector<string> split(string, char);
 void print_vector(vector<string>);
+void concat_if();
+void concat_else();
 
 int linha = 1;
 
 map<string, int> vars;
 map<string, Label> mlabel;
+map<string, int> clabel;
 int if_labels = 0;
 int prev_if_lalbels = 0;
 int while_labels = 0;
@@ -55,28 +58,30 @@ string str_buffer = "";
 %left '+' '-'
 %left '*' '/'
 %right tk_inc_one
+%right '[' ']'
+%left '.'
 
 %%
 
-P : CMD P
-  | CMD
+P : CMD
   ;
 
 CMD : C CMD
     | C
 
-C : tk_if '(' E ')' { 
-    create_if_label("then"); 
-    concat_str("?\n"); 
-    create_if_label("end_if"); 
-    concat_str("#\n"); 
-    end_if_label("then");
-  } C { end_if_label("end_if"); }
+C : IF 
   | W
-  | W ';'
-  | '{' CMD '}' 
   | D ';'
   ;
+
+BLOCO : '{' CMD '}' ';'
+      | '{' CMD '}' 
+      | C
+      ;
+
+IF : tk_if '(' E ')' { concat_if(); } BLOCO { concat_else(); } tk_else BLOCO { end_if_label("end_else"); }
+   | tk_if '(' E ')' { concat_if(); } BLOCO { concat_else(); end_if_label("end_else"); }
+   ;
 
 W : tk_while { 
     concat_str(while_start_p = ":while_"+to_string(while_labels));
@@ -88,7 +93,7 @@ W : tk_while {
     create_while_label("end_while"); 
     concat_str("#\n"); 
     end_while_label("then");
-  } CMD {
+  } BLOCO {
     concat_str("%while_" + to_string(while_start_i) + "\n"); 
     concat_str("#\n");
     end_while_label("end_while"); 
@@ -198,12 +203,26 @@ void yyerror( const char* msg ) {
   exit(1);
 }
 
+void concat_if() { 
+  create_if_label("then");   // pula para escopo do if
+  concat_str("?\n");        
+  create_if_label("end_if"); // pula o if 
+  concat_str("#\n");        
+  end_if_label("then");      // inicia escopo do if
+  create_if_label("end_else");  // pula escopo do esle (se houver)
+}
+
+void concat_else() { 
+  concat_str("#\n");
+  end_if_label("end_if"); 
+}
+
 void create_if_label(string v) {
-  str_buffer += '%' + v + '_' + to_string(++if_labels) + '\n'; 
+  str_buffer += '%' + v + '_' + to_string(++clabel[v]) + '\n'; 
 }
 
 void end_if_label(string v){
-  str_buffer += ':' + v + '_' + to_string(++prev_if_lalbels) + "\n"; 
+  str_buffer += ':' + v + '_' + to_string(++clabel["end_"+v]) + "\n"; 
 }
 
 void create_while_label(string v) {
