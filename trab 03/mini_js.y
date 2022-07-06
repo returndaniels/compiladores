@@ -87,23 +87,24 @@ C : tk_if '(' E ')' {
 
 D : tk_let d
   | A
+  | E
   ;
 
 d : l ',' d
   | l
 
-l : LVALUE { concat_str( "&\n" + $1.v + "\n"  ); } '=' E { concat_str( "=\n^\n" ); }
+l : LVALUE { concat_str( "&\n" + $1.v  ); } '=' E { concat_str( "=\n^\n" ); }
   | LVALUE { concat_str( "&\n" ); }
   ;
 
 A : LVALUE a
   | LVALUEPROP '=' E { concat_str( "[=]\n^\n" ); }
-  | LVALUE tk_inc { concat_str( $1.v + "\n@\n" ); } E { concat_str( "+\n=\n^\n" ); }
+  | LVALUE tk_inc { concat_str( $1.v + "@\n" ); } E { concat_str( "+\n=\n^\n" ); }
   | LVALUEPROP tk_inc { concat_str( $1.v + "[@]\n" ); } E { concat_str( "+\n[=]\n^\n" ); }
   ;
 
 a : '=' E { concat_str( "=\n^\n" ); }
-  | '=' LVALUE '=' E { concat_str( "=\n^\n" + $2.v + "\n@\n=\n^\n" ); }
+  | '=' LVALUE '=' E { concat_str( "=\n^\n" + $2.v + "@\n=\n^\n" ); }
   ;
   
 E : E '+' E { concat_str( "+\n" ); }
@@ -128,13 +129,14 @@ F : LVALUE { concat_str("@\n"); $$.v = $1.v + "@\n"; }
   | tk_str2 { concat_str(  $1.v + "\n" ); }
   | tk_cmmt { concat_str(  $1.v + "\n" ); }
   | '(' E ')'
-  | LVALUE { concat_str("@\n"); } tk_inc_one  { concat_str( $1.v  + '\n' + $1.v + "\n@\n1\n+\n=\n^\n" ); }
+  | LVALUE { concat_str("@\n"); } tk_inc_one  { concat_str( $1.v + $1.v + "@\n1\n+\n=\n^\n" ); } 
+  | LVALUEPROP { concat_str("[@]\n"); } tk_inc_one  { concat_str( $1.v + $1.v + "[@]\n1\n+\n[=]\n^\n" ); }
   | tk_id '(' PARAM ')' { concat_str( $1.v + "\n$\n" ); }
   | '{' '}' { concat_str( "{}\n" ); }
   | '[' ']' { concat_str( "[]\n" ); }
   ;
 
-LVALUE : tk_id { concat_str( $1.v + "\n" ); }
+LVALUE : tk_id { concat_str( $1.v + "\n" ); $$.v = $1.v + "\n"; }
        ;
 
 LVALUEPROP : E '.' tk_id { concat_str( $3.v + "\n" ); $$.v = $1.v + $3.v + "\n"; }
