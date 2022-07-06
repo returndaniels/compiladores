@@ -55,9 +55,12 @@ string str_buffer = "";
 
 %%
 
-P : C P
-  | C
+P : CMD P
+  | CMD
   ;
+
+CMD : C CMD
+    | C
 
 C : tk_if '(' E ')' { 
     create_if_label("then"); 
@@ -66,23 +69,27 @@ C : tk_if '(' E ')' {
     concat_str("#\n"); 
     end_if_label("then");
   } C { end_if_label("end_if"); }
-  | tk_while { 
+  | W
+  | W ';'
+  | '{' CMD '}' 
+  | D ';'
+  ;
+
+W : tk_while { 
     concat_str(while_start_p = ":while_"+to_string(while_labels));
     concat_str("\n");
     while_start_i = while_labels++;
-   } '(' E ')' { 
+  } '(' E ')' { 
     create_while_label("then"); 
     concat_str("?\n"); 
     create_while_label("end_while"); 
     concat_str("#\n"); 
     end_while_label("then");
-  } C {
+  } CMD {
     concat_str("%while_" + to_string(while_start_i) + "\n"); 
     concat_str("#\n");
     end_while_label("end_while"); 
   }
-  | '{' C '}'
-  | D ';'
   ;
 
 D : tk_let d
