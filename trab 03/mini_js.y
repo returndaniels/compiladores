@@ -58,7 +58,7 @@ string str_buffer = "";
 %left '+' '-'
 %left '*' '/'
 %right tk_inc_one
-%right '[' ']'
+%left '[' 
 %left '.'
 
 %%
@@ -79,8 +79,11 @@ BLOCO : '{' CMD '}' ';'
       | C
       ;
 
-IF : tk_if '(' E ')' { concat_if(); } BLOCO { concat_else(); } tk_else BLOCO { end_if_label("end_else"); }
-   | tk_if '(' E ')' { concat_if(); } BLOCO { concat_else(); end_if_label("end_else"); }
+I : tk_if '(' E ')' { concat_if(); }
+  ;
+  
+IF : I BLOCO { concat_else(); } tk_else BLOCO { end_if_label("end_else"); }
+   | I BLOCO { concat_else(); end_if_label("end_else"); }
    ;
 
 W : tk_while { 
@@ -222,7 +225,7 @@ void create_if_label(string v) {
 }
 
 void end_if_label(string v){
-  str_buffer += ':' + v + '_' + to_string(++clabel["end_"+v]) + "\n"; 
+  str_buffer += ':' + v + '_' + to_string(++clabel["_" + v]) + "\n"; 
 }
 
 void create_while_label(string v) {
